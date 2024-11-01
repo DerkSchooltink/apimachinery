@@ -46,16 +46,19 @@ func NewStructuredMergeManager(typeConverter TypeConverter, objectConverter runt
 	if typeConverter == nil {
 		return nil, fmt.Errorf("typeconverter must not be nil")
 	}
+
+	updater := merge.UpdaterBuilder{
+		Converter:    newVersionConverter(typeConverter, objectConverter, hub), // This is the converter provided to SMD from k8s
+		IgnoreFilter: resetFields,
+	}
+
 	return &structuredMergeManager{
 		typeConverter:   typeConverter,
 		objectConverter: objectConverter,
 		objectDefaulter: objectDefaulter,
 		groupVersion:    gv,
 		hubVersion:      hub,
-		updater: merge.Updater{
-			Converter:    newVersionConverter(typeConverter, objectConverter, hub), // This is the converter provided to SMD from k8s
-			IgnoreFilter: resetFields,
-		},
+		updater:         *updater.BuildUpdater(),
 	}, nil
 }
 
@@ -63,16 +66,17 @@ func NewStructuredMergeManager(typeConverter TypeConverter, objectConverter runt
 // CRDs. This allows for the possibility of fields which are not defined
 // in models, as well as having no models defined at all.
 func NewCRDStructuredMergeManager(typeConverter TypeConverter, objectConverter runtime.ObjectConvertor, objectDefaulter runtime.ObjectDefaulter, gv schema.GroupVersion, hub schema.GroupVersion, resetFields map[fieldpath.APIVersion]fieldpath.Filter) (_ Manager, err error) {
+	updater := merge.UpdaterBuilder{
+		Converter:    newCRDVersionConverter(typeConverter, objectConverter, hub),
+		IgnoreFilter: resetFields,
+	}
 	return &structuredMergeManager{
 		typeConverter:   typeConverter,
 		objectConverter: objectConverter,
 		objectDefaulter: objectDefaulter,
 		groupVersion:    gv,
 		hubVersion:      hub,
-		updater: merge.Updater{
-			Converter:    newCRDVersionConverter(typeConverter, objectConverter, hub),
-			IgnoreFilter: resetFields,
-		},
+		updater:         *updater.BuildUpdater(),
 	}, nil
 }
 
